@@ -31,6 +31,8 @@ PolyHok.defmodule EuclideanDistance do
     threads_per_block = 512
     num_blocks = div(len_x + threads_per_block - 1, threads_per_block)
 
+    start_t = System.monotonic_time()
+
     PolyHok.spawn(
       &EuclideanDistance.euclidean_distance_kernel/5,
       {num_blocks, 1, 1},
@@ -44,6 +46,11 @@ PolyHok.defmodule EuclideanDistance do
       ]
     )
 
-    PolyHok.get_gnx(arr_results_gnx) |> Nx.to_list()
+    end_t = System.monotonic_time()
+    time_ms = System.convert_time_unit(end_t - start_t, :native, :millisecond)
+
+    result_list = PolyHok.get_gnx(arr_results_gnx) |> Nx.to_list()
+
+    {result_list, time_ms}
   end
 end
