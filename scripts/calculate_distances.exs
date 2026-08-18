@@ -2,17 +2,32 @@ use EuclideanDistance
 
 argv = System.argv()
 
-if length(argv) != 1 do
-  IO.puts "Usage: mix run scripts/calculate_distances.exs DIM"
-  :erlang.halt(1)
-end
+{str_dim, str_verbose} =
+  case length(argv) do
+    1 ->
+      {System.argv() |> hd(), nil}
 
-dim = System.argv() |> hd() |> String.to_integer()
+    2 ->
+      {System.argv() |> hd(), System.argv() |> tl() |> hd()}
+
+    _ ->
+      IO.puts("Usage: mix run scripts/calculate_distances.exs DIM [-v|--verbose]")
+      :erlang.halt(1)
+  end
+
+dim = str_dim |> String.to_integer()
 
 if dim < 1 do
-  IO.puts "DIM cannot be less than 1!"
+  IO.puts("DIM cannot be less than 1!")
   :erlang.halt(1)
 end
+
+verbose =
+  case str_verbose do
+    "-v" -> true
+    "--verbose" -> true
+    _ -> false
+  end
 
 # --- Creating lists with vector data ---
 
@@ -28,19 +43,38 @@ x_tensor = Nx.tensor(x_values, type: :f32)
 
 # --- Spawning kernel and measuring its time ---
 
-start_t = System.monotonic_time()
-
-dists = EuclideanDistance.calculate_euclidean_distance(q_tensor, x_tensor, len_x, dim)
-
-end_t = System.monotonic_time()
-time_ms = System.convert_time_unit(end_t - start_t, :native, :millisecond)
+{dists, time_ms} = EuclideanDistance.calculate_euclidean_distance(q_tensor, x_tensor, len_x, dim)
 
 # --- Printing time and results ---
 
-IO.puts("Time took: #{time_ms}ms\n")
-IO.puts("Vector dimension: #{dim}")
-IO.inspect(q_values, label: "q - reference vector")
-IO.puts("Size of X set: #{len_x}")
+IO.puts("== Time took: #{time_ms}ms")
+IO.puts("")
+IO.puts("Vector dimension (T): #{dim}")
+IO.puts("Size of X set (N): #{len_x}")
+IO.puts("")
+IO.inspect(q_values, label: "q")
+IO.puts("")
 IO.inspect(x_values, label: "X set")
 
-Enum.with_index(dists, 1) |> Enum.map(fn {dist, idx} -> IO.puts("Dist #{idx}: #{dist}") end)
+if verbose do
+  IO.puts("")
+
+  Enum.with_index(dists, 1)
+  |> Enum.map(fn {dist, idx} ->
+    expected_val = :math.sqrt((idx * 1.0 - 1.0) ** 2 * dim)
+
+    idx_formatted =
+      Integer.to_string(idx)
+      |> String.pad_leading(4)
+
+    dist_formatted =
+      :erlang.float_to_binary(dist, decimals: 3)
+      |> String.pad_leading(8)
+
+    expected_val_formatted =
+      :erlang.float_to_binary(expected_val, decimals: 3)
+      |> String.pad_leading(8)
+
+    IO.puts("Dist #{idx_formatted}: #{dist_formatted} | Expected: #{expected_val_formatted}")
+  end)
+end
