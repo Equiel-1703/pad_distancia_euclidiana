@@ -14,7 +14,7 @@ end_t = System.monotonic_time()
 time_ms = System.convert_time_unit(end_t - start_t, :native, :millisecond)
 
 IO.puts("Time took: #{time_ms}ms\n")
-IO.inspect(q |> Nx.to_list, label: "q")
-IO.inspect(x |> Nx.to_list, label: "x")
+IO.inspect(q |> Nx.to_list(), label: "q")
+IO.inspect(x |> Nx.to_list(), label: "x")
 
 Enum.with_index(dists, 1) |> Enum.map(fn {dist, idx} -> IO.puts("Dist #{idx}: #{dist}") end)
